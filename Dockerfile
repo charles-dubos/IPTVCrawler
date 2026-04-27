@@ -7,7 +7,7 @@ ENV     APP_PATH="/iptv_crawler"
 
 WORKDIR $APP_PATH
 
-ADD     iptv_crawler.py requirements.txt config.json .
+ADD     iptv_crawler.py requirements.txt .
 
 RUN     pip install -r requirements.txt
 
