@@ -1,55 +1,59 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-URL = "http://iptv-org.github.io/iptv/countries/fr.m3u"
-OUTPUT = "./MonIPtv.m3u"
-
-MY_CHANNELS = [
-    "TF1 HD",
-    "France 2 HD",
-    "France 3 HD",
-    "France 4 HD",
-    "France 5 HD",
-    "M6",
-    "Arte",
-    "LCP",
-    "W9",
-    "TMC",
-    "TFX",
-    "Gulli",
-    "BFM TV",
-    "CNews",
-    "LCI",
-    "France info",
-    "C Star",
-    "T18",
-    "Novo",
-    "TF1 Series Films",
-    "L'Equipe",
-    "6ter",
-    "RMC Story",
-    "RMC Decouverte",
-    "Cherie 25",
-    "Paris Premiere",
-    "MTV",
-    "Clubbing TV"
-]
-
 # Dépendances
 from ipytv import playlist
+import json,logging, os
 
 def main():
-    fullPlaylist = playlist.loadu(URL)
+    
+    # Chargement des variables d'environnement
+    logLevel = os.getenv('LOG_LEVEL', 'INFO')
+    logging.basicConfig(level=getattr(logging, logLevel))
+    logging.debug(f"Logging activé en mode {logLevel}")
+    logging.getLogger("ipytv").setLevel(logging.WARNING)
+
+
+    logging.info("Début du traitement...")
+    outputFile = os.getenv('OUT_FILE',
+        os.path.dirname(os.path.abspath(__file__)) + "/iptvList.m3u8")
+    configFile = os.getenv('CONFIG_FILE',
+        os.path.dirname(os.path.abspath(__file__)) + "/config.json"
+    )
+    
+    # Parsing du fichier json de confs
+    logging.debug(f"Chargement du fichier {configFile}")
+    with open(configFile, "r") as r_file:
+        logging.debug("Chargement du fichier JSON en dictionnaire Python")
+        configJson = json.load(r_file)
+    # Si pas de conf, generer une erreur
+    if not configJson:
+        raise FileNotFoundError
+    logging.debug("Chargement du fichier de configuration terminé")
+
+    # Recuperation de la playlist complete a l'URL donnée
+    logging.debug(f"Connection à l'URL {configJson['sourceUrl']}")
+    fullPlaylist = playlist.loadu(configJson["sourceUrl"])
+    logging.debug(f"Nombre de canaux téléchargés: {fullPlaylist.length()}")
+
+    # Generation de la nouvelle playlist et import des chaines voulues
     newPlaylist = playlist.M3UPlaylist()
-    print(f"Nombre de canaux téléchargés: {fullPlaylist.length()}")
-    for index,channel in enumerate(MY_CHANNELS):
+    for channel in configJson["channels"]:
+        logging.debug(f"Recherche de {channel['id']}...")
         for chan in fullPlaylist:
-            if channel in chan.name:
+            if channel['id'] in chan.name:
+                logging.debug(f"{channel['id']} trouvé dans {chan.name}")
+                chan.attributes["tvg-chno"] = channel['tvg-chno']
+                logging.debug(f"Enregistrement du numero de chaine à {channel['tvg-chno']}")
                 newPlaylist.append_channel(chan)
+                logging.info(f"{channel['id']} chargé.")
                 break
-    print(newPlaylist.length())
-    with open(OUTPUT, 'w', encoding='utf-8') as outputFile:
-        outputFile.write(newPlaylist.to_m3u_plus_playlist())
+    logging.debug(f"{newPlaylist.length()} chaines chargées.")
+    
+    # Enregistrement de la sortie dans le fichier de sortie
+    with open(outputFile, 'w', encoding='utf-8') as w_file:
+        w_file.write(newPlaylist.to_m3u_plus_playlist())
+        logging.info(f"Playlist {outputFile} enregistrée.")
 
 
 if __name__ == "__main__":
