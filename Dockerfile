@@ -4,6 +4,7 @@ LABEL   maintainer="Papa Dub's" \
         description="Crawler IPTV maison"
 
 ENV     APP_PATH="/iptv_crawler"
+ENV     PYTHONUNBUFFERED=1
 
 WORKDIR $APP_PATH
 
